@@ -67,6 +67,17 @@
 			29 01 00 00 32 00 1B D3 13 33 99 B3 B3 33 33 33 11 00 01 00 00 D8 A0 05 3F 3F 33 33 72 12 8A 57 3D BC
 			29 00 00 00 00 00 02 B0 03
 			05 01 00 00 32 00 02 10 00];
+		cm,mdss-livedisplay-cabc-cmd = [
+			29 01 00 00 00 00 02 55 00];
+		cm,mdss-livedisplay-cabc-ui-value = <0x01>;
+		cm,mdss-livedisplay-cabc-image-value = <0x02>;
+		cm,mdss-livedisplay-cabc-video-value = <0x03>;
+		cm,mdss-livedisplay-sre-weak-value = <0x50>;
+		cm,mdss-livedisplay-sre-medium-value = <0x60>;
+		cm,mdss-livedisplay-sre-strong-value = <0x70>;
+		cm,mdss-livedisplay-cabc-ce-value = <0x80>;
+		cm,mdss-livedisplay-post-cmd = [
+			05 01 00 00 00 00 02 29 00];
 		qcom,mdss-dsi-on-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";

@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
  * Copyright (C) 2016 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -972,6 +972,7 @@ static void mdss_dsi_debugfs_cleanup(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 		struct mdss_dsi_debugfs_info *dfs = ctrl->debugfs_info;
 		if (dfs && dfs->root)
 			debugfs_remove_recursive(dfs->root);
+		kfree(dfs);
 		pdata = pdata->next;
 	} while (pdata);
 	pr_debug("%s: Cleaned up mdss_dsi_debugfs_info\n", __func__);
@@ -1085,7 +1086,6 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata, int power_state)
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
-	mutex_lock(&ctrl_pdata->mutex);
 	panel_info = &ctrl_pdata->panel_data.panel_info;
 
 	pr_debug("%s+: ctrl=%p ndx=%d power_state=%d\n",
@@ -1130,7 +1130,6 @@ panel_power_ctrl:
 		panel_info->mipi.frame_rate = panel_info->new_fps;
 
 end:
-	mutex_unlock(&ctrl_pdata->mutex);
 	pr_debug("%s-:\n", __func__);
 
 	return ret;
@@ -1272,14 +1271,14 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 		goto end;
 	}
 
-	ret = mdss_dsi_set_clk_src(ctrl_pdata);
-	if (ret) {
-		pr_err("%s: failed to set clk src. rc=%d\n", __func__, ret);
+	if (mdss_panel_is_power_on(cur_power_state)) {
+		pr_debug("%s: dsi_on from panel low power state\n", __func__);
 		goto end;
 	}
 
-	if (mdss_panel_is_power_on(cur_power_state)) {
-		pr_debug("%s: dsi_on from panel low power state\n", __func__);
+	ret = mdss_dsi_set_clk_src(ctrl_pdata);
+	if (ret) {
+		pr_err("%s: failed to set clk src. rc=%d\n", __func__, ret);
 		goto end;
 	}
 
@@ -1441,7 +1440,6 @@ static int mdss_dsi_unblank(struct mdss_panel_data *pdata)
 				goto error;
 			}
 		}
-		ctrl_pdata->ctrl_state |= CTRL_STATE_PANEL_INIT;
 	}
 
 	if ((pdata->panel_info.type == MIPI_CMD_PANEL) &&
@@ -1451,6 +1449,7 @@ static int mdss_dsi_unblank(struct mdss_panel_data *pdata)
 			enable_irq(gpio_to_irq(ctrl_pdata->disp_te_gpio));
 	}
 
+	ctrl_pdata->ctrl_state |= CTRL_STATE_PANEL_INIT;
 error:
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
 
@@ -2027,6 +2026,15 @@ int mdss_dsi_register_recovery_handler(struct mdss_dsi_ctrl_pdata *ctrl,
 	return 0;
 }
 
+int mdss_dsi_register_mdp_callback(struct mdss_dsi_ctrl_pdata *ctrl,
+	struct mdss_intf_recovery *mdp_callback)
+{
+	mutex_lock(&ctrl->mutex);
+	ctrl->mdp_callback = mdp_callback;
+	mutex_unlock(&ctrl->mutex);
+	return 0;
+}
+
 static int mdss_dsi_clk_refresh(struct mdss_panel_data *pdata)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
@@ -2265,6 +2273,10 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		break;
 	case MDSS_EVENT_REGISTER_RECOVERY_HANDLER:
 		rc = mdss_dsi_register_recovery_handler(ctrl_pdata,
+			(struct mdss_intf_recovery *)arg);
+		break;
+	case MDSS_EVENT_REGISTER_MDP_CALLBACK:
+		rc = mdss_dsi_register_mdp_callback(ctrl_pdata,
 			(struct mdss_intf_recovery *)arg);
 		break;
 	case MDSS_EVENT_DSI_DYNAMIC_SWITCH:

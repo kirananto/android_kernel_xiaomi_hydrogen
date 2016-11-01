@@ -1,7 +1,7 @@
 /*
  * MDSS MDP Interface (used by framebuffer core)
  *
- * Copyright (c) 2007-2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2007-2016, The Linux Foundation. All rights reserved.
  * Copyright (C) 2007 Google Incorporated
  * Copyright (C) 2016 XiaoMi, Inc.
  *
@@ -1035,7 +1035,8 @@ static int mdss_iommu_tlb_timeout_notify(struct notifier_block *self,
 	switch (action) {
 	case TLB_SYNC_TIMEOUT:
 		pr_err("cb for TLB SYNC timeout. Dumping XLOG's\n");
-		MDSS_XLOG_TOUT_HANDLER_FATAL_DUMP("vbif", "mdp", "mdp_dbg_bus");
+		MDSS_XLOG_TOUT_HANDLER_FATAL_DUMP("vbif", "mdp",
+					"mdp_dbg_bus", "atomic_context");
 		break;
 	}
 
@@ -1674,7 +1675,7 @@ static ssize_t mdss_mdp_store_max_limit_bw(struct device *dev,
 	struct mdss_data_type *mdata = dev_get_drvdata(dev);
 	u32 data = 0;
 
-	if (1 != sscanf(buf, "%d", &data)) {
+	if (kstrtouint(buf, 0, &data)) {
 		pr_info("Not able scan to bw_mode_bitmap\n");
 	} else {
 		mdata->bw_mode_bitmap = data;

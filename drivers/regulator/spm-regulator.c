@@ -102,8 +102,10 @@ static const struct voltage_range ult_hf_range1 = {750000, 750000, 1525000,
 #define QPNP_FTS2_STEP_MARGIN_NUM	4
 #define QPNP_FTS2_STEP_MARGIN_DEN	5
 
-/* Adding setteling delay for FTS2.5 */
-/* warm-up=20uS, 0-10% & 90-100% V-ramp = 50uS */
+/*
+ * Settling delay for FTS2.5
+ * Warm-up=20uS, 0-10% & 90-100% non-linear V-ramp delay = 50uS
+ */
 #define FTS2P5_SETTLING_DELAY_US	70
 
 /* VSET value to decide the range of ULT SMPS */

@@ -1,4 +1,4 @@
-/* Copyright (c) 2009-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2009-2016, The Linux Foundation. All rights reserved.
  * Copyright (C) 2016 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -80,7 +80,7 @@ static ssize_t panel_debug_base_offset_write(struct file *file,
 
 	buf[count] = 0;	/* end of string */
 
-	if (sscanf(buf, "%x %d", &off, &cnt) != 2)
+	if (sscanf(buf, "%x %u", &off, &cnt) != 2)
 		return -EFAULT;
 
 	if (off > dbg->max_offset)
@@ -180,7 +180,8 @@ static ssize_t panel_debug_base_reg_write(struct file *file,
 		mdata->debug_inf.debug_enable_clock(1);
 
 	dsi_write_cmd.dchdr.dlen = len;
-	mdss_dsi_cmdlist_put(ctrl_pdata, &cmdreq);
+	if (ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT)
+		mdss_dsi_cmdlist_put(ctrl_pdata, &cmdreq);
 
 	if (mdata->debug_inf.debug_enable_clock)
 		mdata->debug_inf.debug_enable_clock(0);
@@ -199,6 +200,7 @@ static ssize_t panel_debug_base_reg_read(struct file *file,
 	struct mdss_panel_data *panel_data = ctl->panel_data;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = container_of(panel_data,
 					struct mdss_dsi_ctrl_pdata, panel_data);
+	int rc = -EFAULT;
 
 	if (!dbg)
 		return -ENODEV;
@@ -217,7 +219,8 @@ static ssize_t panel_debug_base_reg_read(struct file *file,
 
 	if (!rx_buf || !panel_reg_buf) {
 		pr_err("not enough memory to hold panel reg dump\n");
-		return -ENOMEM;
+		rc = -ENOMEM;
+		goto read_reg_fail;
 	}
 
 	if (mdata->debug_inf.debug_enable_clock)
@@ -227,21 +230,20 @@ static ssize_t panel_debug_base_reg_read(struct file *file,
 	mdss_dsi_panel_cmd_read(ctrl_pdata, panel_reg[0], panel_reg[1],
 				NULL, rx_buf, dbg->cnt);
 
-	len = snprintf(panel_reg_buf, reg_buf_len, "0x%02zx: ", dbg->off);
-	if (len < 0 || len >= sizeof(panel_reg_buf))
-		goto read_reg_fail;
+	len = scnprintf(panel_reg_buf, reg_buf_len, "0x%02zx: ", dbg->off);
 
 	for (i = 0; (len < reg_buf_len) && (i < ctrl_pdata->rx_len); i++)
 		len += scnprintf(panel_reg_buf + len, reg_buf_len - len,
 				"0x%02x ", rx_buf[i]);
 
-	panel_reg_buf[len - 1] = '\n';
+	if (len)
+		panel_reg_buf[len - 1] = '\n';
 
 	if (mdata->debug_inf.debug_enable_clock)
 		mdata->debug_inf.debug_enable_clock(0);
 
-	if ((count < sizeof(panel_reg_buf))
-				|| copy_to_user(user_buf, panel_reg_buf, len))
+	if ((count < reg_buf_len)
+			|| (copy_to_user(user_buf, panel_reg_buf, len)))
 		goto read_reg_fail;
 
 	kfree(rx_buf);
@@ -253,8 +255,7 @@ static ssize_t panel_debug_base_reg_read(struct file *file,
 read_reg_fail:
 	kfree(rx_buf);
 	kfree(panel_reg_buf);
-	return -EFAULT;
-
+	return rc;
 }
 
 static const struct file_operations panel_off_fops = {
@@ -694,11 +695,11 @@ static ssize_t mdss_debug_factor_write(struct file *file,
 
 	if (strnchr(buf, count, '/')) {
 		/* Parsing buf as fraction */
-		if (sscanf(buf, "%d/%d", &numer, &denom) != 2)
+		if (sscanf(buf, "%u/%u", &numer, &denom) != 2)
 			return -EFAULT;
 	} else {
 		/* Parsing buf as percentage */
-		if (sscanf(buf, "%d", &numer) != 1)
+		if (kstrtouint(buf, 0, &numer))
 			return -EFAULT;
 		denom = 100;
 	}
@@ -1005,7 +1006,7 @@ static ssize_t mdss_debug_perf_bw_limit_write(struct file *file,
 
 	if (strnchr(buf, count, ' ')) {
 		/* Parsing buf */
-		if (sscanf(buf, "%d %d", &mode, &val) != 2)
+		if (sscanf(buf, "%u %u", &mode, &val) != 2)
 			return -EFAULT;
 	}
 

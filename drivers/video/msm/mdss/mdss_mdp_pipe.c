@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
  * Copyright (C) 2016 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -1780,7 +1780,7 @@ static void mdss_mdp_set_ot_limit_pipe(struct mdss_mdp_pipe *pipe)
 	ot_params.is_rot = pipe->mixer_left->rotator_mode;
 	ot_params.is_wb = ctl->intf_num == MDSS_MDP_NO_INTF;
 	ot_params.is_yuv = pipe->src_fmt->is_yuv;
-		ot_params.frame_rate = pipe->frame_rate;
+	ot_params.frame_rate = pipe->frame_rate;
 
 	mdss_mdp_set_ot_limit(&ot_params);
 }
